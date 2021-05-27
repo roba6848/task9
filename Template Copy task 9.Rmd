@@ -1,0 +1,171 @@
+title: "Template"
+author: "Name (YYMMDD-XXXX)"
+date: "28 april 2018"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, cache = TRUE)
+```
+
+```{r}
+# Set your birth date as random seed
+set.seed(YYMMDD)
+```
+
+**Task 1: Complete the weight-function `w` in the code below such that it implements an importance sampler with $Y\sim Exponential(1/10)$. Also compute the relative error.**
+```{r, eval = FALSE}
+y &lt;- rexp(10000, rate = 1 / 10)
+h &lt;- (y &gt; 10)
+w &lt;- ...
+mean(h * w)
+```
+
+**Task 2: An "optimal" importance sampling distribution for the above problem is $Y = X + 10$, a standard exponential shifted to the right. Try it. In what sense is it "optimal"?**
+
+**Task 3: Write a function**
+```{r, eval = FALSE}
+default &lt;- function(x, C, p){
+    # Takes a vector of simulated losses "x", a starting capital "C"
+    # and a premium "p" and returns an indicator TRUE/FALSE of default
+    T &lt;- length(x)
+    ...
+}
+```
+**that takes a length $T$ vector of simulated losses $(x_1,\ldots,x_T)$, a starting capital $C$, a premium $p$ and returns an indicator of default. Cumulative sums can be computed with R´s `cumsum`.**
+
+**Task 4: What is $w$? Write it in mathematical notation and complete the function below** 
+```{r, eval = FALSE}
+w &lt;- function(Y, mu){
+    ...
+}
+```
+
+```{r, eval = FALSE}
+mu &lt;- ...
+hw &lt;- replicate(N,
+               {
+                   y &lt;- exp(rnorm(20, mean = mu, sd = 1/2))
+                   default(y, C = 10, p = 1) * w(y, mu)
+               })
+}
+mean(hw)
+```
+
+**Task 5: Use the above functions to improve on the approximation of probability of default by choosing a suitable $\mu$.**
+
+**Task 6: Derive the conditional distributions $X_1|X_2 = x_2$ and $X_2|X_1 = x_1$.** 
+
+**Task 7: The following function implements a Gibbs-sampler according to the above, complete it by filling in the `...`**
+```{r, eval = FALSE}
+gibbs_bivn &lt;- function(N, rho, start = c(0,0)){
+    # Takes number of iterations "N", correlation "rho",
+    # and a starting value "start". Returns a N by 2 matrix of 
+    # values Gibbs-sampled from a multivariate normal
+    X &lt;- matrix(ncol = 2, nrow = N)
+    X[1, ] &lt;- start
+    for (i in 2:N){
+        X[i, 1] &lt;- ...
+        X[i, 2] &lt;- ...
+    }
+    return(X)
+}
+```
+
+**Task 8: Try the above for different values of $\rho\in(-1, 1)$ (some really close to 1 or -1). How does the Monte Carlo variance $Var(\bar{X_1})$ approximated by e.g. (fill in `rho` in place of `...`)**
+```{r, eval = FALSE}
+m1hat &lt;- replicate(100,
+                   {
+                       X &lt;- gibbs_bivn(N = 1000, rho = ..., start = rnorm(1))
+                       mean(X[, 1])
+                   }
+)
+var(m1hat)
+```
+**depend on $\rho$? Conclusion?**
+
+** Task 9: The function `gibbs_ising` below simulates am Ising model using a Gibbs-sampler, complete the function by writing the helper-function `sim_sigma` that simulates the value of `sigma` at position `(i1, i2)` conditionally on its values at other positions. R's `sample` is useful for simulating from discrete distributions.**
+
+```{r}
+one_neigh &lt;- function(i1, i2, sigma){
+    # Takes a row number "i1", column number"i2",
+    # matrix "sigma" and counts the number of times value 1
+    # appears as neighbour to position i1, i2 in sigma
+    sigma_pad &lt;- rbind(0, cbind(0, sigma, 0), 0)
+    sum(c(sigma_pad[i1 + 1, i2], sigma_pad[i1 + 1, i2 + 2], 
+          sigma_pad[i1, i2 + 1], sigma_pad[i1 + 2, i2 + 1]) == 1)
+}
+```
+
+```{r, echo = FALSE}
+sim_sigma &lt;- function(i1, i2, sigma, beta){
+    n1 &lt;- one_neigh(i1, i2, sigma)
+    sample(c(-1, 1), 1, prob = exp(beta * c(4 - n1, n1)))
+}
+
+```
+
+
+```{r}
+gibbs_ising &lt;- function(N, k, beta, 
+                        start = matrix(sample(c(-1, 1), k * k, replace = TRUE), 
+                                       ncol = k, nrow = k)){
+    # Takes number of iterations "N", grid-size "k", parameter "beta"
+    # and a starting grid "start". Returns a list of matrices simulated
+    # by Gibbs-sampling the Ising model.
+    sigma_list &lt;- lapply(rep(NA, N), matrix, ncol = k, nrow = k)
+    sigma_list[[1]] &lt;- start
+    sigma &lt;- start
+    for (j in 2:N){
+        for (i1 in 1:k){
+            for (i2 in 1:k){
+                sigma[i1, i2] &lt;- sim_sigma(i1, i2, sigma, beta)
+            }
+        }
+        sigma_list[[j]] &lt;- sigma
+    }
+    sigma_list
+}
+```
+
+
+**Task 10: Simulate and visualise the Ising model for positive and negative values of $\beta$ and report the result.**
+
+**Task 11: Note that by symmetry, $P(\sigma_i = 1)=P(\sigma_i = -1)=1/2$. Simulate a long chain (with a modest $k$) and $\beta = 10$. What is the proportion of values of, say, $\sigma_{(2,2)}$ that equals 1? Conclusion?**
+
+**Task 12: Write a function**
+```{r, eval = FALSE}
+get_exits &lt;- function(arrival_times, service_times){
+    # Takes vectors "arrival_times" and "service_times"
+    # and returns the corresponding vector of exit times
+    ...
+}
+```
+**that returns a vector of exit-times given arrival and service times.**
+
+```{r}
+get_queue &lt;- function(arrival_times, service_times, n0 = 0){
+    # Takes vectors "arrival_times" and "service_times" and
+    # queue length at time "n0" at time 0. Returns a data-frame
+    # with event times (including time 0) together with queue length 
+    N &lt;- length(arrival_times)    
+    exit_times &lt;- get_exits(arrival_times, service_times)
+    times &lt;- c(0, arrival_times, exit_times)
+    event_order &lt;- order(times)
+    changes &lt;- c(n0, rep(1, N), rep(-1, N))[event_order]
+    data.frame(time = sort(times), queue_length = cumsum(changes))
+}
+```
+
+**Task 13: What is the intensity function of the non-homogenous Poisson process on the unit interval simulated below?**
+
+```{r}
+N &lt;- rpois(1, lambda = 10)
+arrival_times &lt;- sort(rbeta(N, 5, 5))
+times &lt;- c(0, arrival_times, 1)
+events &lt;- c(0, 1:N, N)
+plot(times, events, type = "s", xlim = c(0, 1))
+```
+
+**Task 14: Write a function that simulates a queuing system with non-homogenous Poisson arrivals (your choice!) and non-exponential service times (your choice, make them positive though!) and returns the maximum observed queue-length. Run the function 1000 times using `replicate` (or a for-loop) and visualise the maximum queue-length distribution with a histogram.**
+
